@@ -15,10 +15,10 @@ public class SkyLandColliderController : MonoBehaviour
             GameObject.Find("GameManager").GetComponent<GameManager>().GameOver();
         }
         // 如果碰撞到的是球
-        else
-        {
-            // 调用BallController中的Destory方法
-            other.gameObject.GetComponent<BallController>().DestroyBall();
-        }
+        // else
+        // {
+        //     // 调用BallController中的Destory方法
+        //     other.gameObject.GetComponent<BallController>().DestroyBall();
+        // }
     }
 }

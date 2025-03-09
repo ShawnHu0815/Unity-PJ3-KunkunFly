@@ -51,12 +51,6 @@ public class TubeController : MonoBehaviour
             // 游戏结束
             GameObject.Find("GameManager").GetComponent<GameManager>().GameOver();
         }
-        // 如果碰撞到的是球
-        else
-        {
-           // 调用BallController中的Destory方法
-              other.gameObject.GetComponent<BallController>().DestroyBall();
-        }
     }
     
     private bool IsOffScreen()

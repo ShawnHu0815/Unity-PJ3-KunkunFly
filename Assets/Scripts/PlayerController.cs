@@ -42,9 +42,22 @@ public class PlayerController : MonoBehaviour
     
     public void CreateBall()
     {
-        GameObject ball = Instantiate(ballPrefab, firePosition.position, Quaternion.identity);
+        // 生成球的随机位置偏移
+        Vector2 positionOffset = new Vector2(
+            Random.Range(-0.2f, 0.2f), // X 轴偏移（-0.1 到 0.1）
+            Random.Range(-0.2f, 0.2f)  // Y 轴偏移（-0.1 到 0.1）
+        );
+
+        // 生成球的随机旋转角度
+        float rotationOffset = Random.Range(-30f, 30f); // 旋转角度偏移
+
+        // 计算最终生成位置和旋转
+        Vector2 spawnPosition = firePosition.position + (Vector3)positionOffset;
+        Quaternion spawnRotation = Quaternion.Euler(0, 0, rotationOffset);
+
+        // 实例化球
+        GameObject ball = Instantiate(ballPrefab, spawnPosition, spawnRotation);
         ball.SetActive(true);
-        
     }
 
     public void ChangeState(bool isFly, bool isSimulated = false)
