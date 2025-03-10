@@ -26,7 +26,7 @@ public class PlayerController : MonoBehaviour
     void Update()
     {   
         if(!gameManager.isGameStart)return;
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.C))
         {
              Fly();
              CreateBall();
