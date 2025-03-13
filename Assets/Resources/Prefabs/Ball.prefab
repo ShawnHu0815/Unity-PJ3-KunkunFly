@@ -175,5 +175,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e6628dc0ffa304a6897c13d400b6da24, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  luaScript: {fileID: 0}
+  luaScript: {fileID: 4900000, guid: c5a892ec473a6471c869269756545144, type: 3}
   luaScriptPath: Game/Ball/BallController.lua

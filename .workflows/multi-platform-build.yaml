@@ -1,0 +1,197 @@
+name: 多平台发布构建
+# 团结云开发多平台构建工作流
+
+# 仅在合并到main分支时触发构建
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # Windows平台构建任务
+  build-windows:
+    name: 构建Windows版本
+    # 使用团结云开发指定的运行环境
+    runs-on: windows-server-2022-tuanjie-1.2.0-pc-8c-16g
+    steps:
+      # 从团结云开发的 PlasticSCM 仓库签出项目内容
+      - name: 检出项目代码
+        uses: actions/checkout-plasticscm@v1
+        with:
+          # 不指定ref,默认签出main分支最新变更集
+          path: tjcloudbuild
+          silent: false  # 显示详细签出过程
+
+      # 列出仓库内容，确认检出成功
+      - name: 检查仓库内容
+        shell: cmd
+        run: |
+          echo "项目根目录内容:"
+          dir /a tjcloudbuild
+          echo "Assets目录内容:"
+          dir /a tjcloudbuild\Assets
+
+      # 确保Lua脚本正确设置
+      - name: 准备Lua脚本目录
+        shell: cmd
+        run: |
+          echo "创建StreamingAssets/Lua目录结构..."
+          mkdir tjcloudbuild\StreamingAssets\Lua\Game\Ball
+          
+          echo "检查源Lua文件是否存在..."
+          if exist tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua (
+            echo "Lua源文件存在，复制到StreamingAssets..."
+            copy tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua tjcloudbuild\StreamingAssets\Lua\Game\Ball\
+            echo "复制完成，检查目标文件..."
+            dir tjcloudbuild\StreamingAssets\Lua\Game\Ball\
+          ) else (
+            echo "错误: Lua源文件不存在!"
+            dir /s /b tjcloudbuild\*.lua
+          )
+
+      # 使用 Library 目录缓存加速构建
+      - name: 缓存Library文件夹
+        uses: actions/tj-cache@v1
+        id: cache-library
+        with:
+          path: ./tjcloudbuild/Library
+          key: Library-Windows-${{ github.sha }}
+          restore-keys: |
+            Library-Windows-
+
+      # 构建Windows版本
+      - name: 构建Windows版本
+        uses: actions/tj-builder@v3
+        id: build-windows
+        with:
+          targetPlatform: StandaloneWindows64
+          projectPath: ./tjcloudbuild
+          buildName: FlappyBird-Windows
+          customParameters: "-development -logFile ./detailed_build.log -verbose"
+          multiProcessAssetBundleBuild: true
+          parallelImport: true
+
+      # 错误检查和日志展示
+      - name: 错误检查和日志分析
+        if: always()
+        shell: cmd
+        run: |
+          echo "检查构建日志..."
+          if exist detailed_build.log (
+            echo "显示最后100行日志..."
+            powershell -command "if(Test-Path detailed_build.log) { Get-Content -Path detailed_build.log -Tail 100 }"
+          ) else (
+            echo "构建日志文件不存在"
+            dir /s /b tjcloudbuild\*.log
+          )
+
+      # 尝试上传构建产物，即使构建失败也尝试
+      - name: 上传Windows版本
+        if: always()
+        uses: actions/tj-upload-artifact@v2
+        with:
+          name: FlappyBird-Windows-Build-Logs
+          path: |
+            ./detailed_build.log
+            ./tjcloudbuild/Logs/
+          retention-days: 30
+          if-no-files-found: warn
+
+  # Android平台构建任务
+  build-android:
+    name: 构建Android版本
+    runs-on: windows-server-2022-tuanjie-1.2.0-pc-8c-16g
+    steps:
+      # 从团结云开发的 PlasticSCM 仓库签出项目内容
+      - name: 检出项目代码
+        uses: actions/checkout-plasticscm@v1
+        with:
+          path: tjcloudbuild
+          silent: false
+
+      # 确保Lua脚本正确设置
+      - name: 准备Lua脚本目录
+        shell: cmd
+        run: |
+          mkdir tjcloudbuild\StreamingAssets\Lua\Game\Ball
+          copy tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua tjcloudbuild\StreamingAssets\Lua\Game\Ball\
+
+      # 使用 Library 目录缓存加速构建
+      - name: 缓存Library文件夹
+        uses: actions/tj-cache@v1
+        with:
+          path: ./tjcloudbuild/Library
+          key: Library-Android-${{ github.sha }}
+          restore-keys: |
+            Library-Android-
+
+      # 构建Android版本
+      - name: 构建Android版本
+        uses: actions/tj-builder@v3
+        id: build-android
+        with:
+          targetPlatform: Android
+          projectPath: ./tjcloudbuild
+          buildName: FlappyBird-Android
+          customParameters: "-development -logFile ./android_build.log"
+          versioning: Default
+
+      # 上传构建产物
+      - name: 上传Android版本
+        if: always()
+        uses: actions/tj-upload-artifact@v2
+        with:
+          name: FlappyBird-Android-${{ steps.build-android.outputs.buildVersion }}
+          path: |
+            ${{ steps.build-android.outputs.buildsPath }}
+            ./android_build.log
+          retention-days: 30
+          if-no-files-found: warn
+
+  # # MacOS平台构建任务
+  # build-macos:
+  #   name: 构建MacOS版本
+  #   # 确保使用Mac构建环境 - 根据团结云开发支持的环境选择
+  #   runs-on: macos-12-tuanjie-1.2.0-pc-8c-16g
+  #   steps:
+  #     # 从团结云开发的 PlasticSCM 仓库签出项目内容
+  #     - name: 检出项目代码
+  #       uses: actions/checkout-plasticscm@v1
+  #       with:
+  #         path: tjcloudbuild
+  #         silent: true
+
+  #     # 使用 Library 目录缓存加速构建
+  #     - name: 缓存Library文件夹
+  #       uses: actions/tj-cache@v1
+  #       with:
+  #         path: ./tjcloudbuild/Library
+  #         key: Library-MacOS-${{ github.sha }}
+  #         restore-keys: |
+  #           Library-MacOS-
+
+  #     # 确保Lua脚本正确设置
+  #     - name: 准备Lua脚本目录
+  #       run: |
+  #         mkdir -p ./tjcloudbuild/StreamingAssets/Lua/Game/Ball
+  #         cp ./tjcloudbuild/Assets/Lua/Game/Ball/BallController.lua ./tjcloudbuild/StreamingAssets/Lua/Game/Ball/
+
+  #     # 构建MacOS版本
+  #     - name: 构建MacOS版本
+  #       uses: actions/tj-builder@v3
+  #       id: build-macos
+  #       with:
+  #         targetPlatform: StandaloneOSX
+  #         projectPath: ./tjcloudbuild
+  #         buildName: FlappyBird-MacOS
+  #         customParameters: "-development"
+  #         versioning: Default
+
+  #     # 上传构建产物
+  #     - name: 上传MacOS版本
+  #       uses: actions/tj-upload-artifact@v2
+  #       with:
+  #         name: FlappyBird-MacOS-${{ steps.build-macos.outputs.buildVersion }}
+  #         path: ${{ steps.build-macos.outputs.buildsPath }}
+  #         retention-days: 30
+  #         if-no-files-found: error
