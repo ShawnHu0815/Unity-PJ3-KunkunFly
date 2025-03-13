@@ -73,8 +73,3 @@ Packed/
 # Ignore JetBrains Rider project files
 .idea/
 *.sln.iml
-
-Assets/Lua.meta
-Assets/Lua/Game.meta
-Assets/Lua/Game/Ball.meta
-Assets/Plugins/arm64.meta
