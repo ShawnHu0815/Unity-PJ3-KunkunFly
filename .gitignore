@@ -26,6 +26,7 @@ Thumbs.db
 [Bb]uilds/
 [Ll]ogs/
 [Mm]emoryCaptures/
+.plastic/
 AssetStoreTools*
 ignore.conf
 
