@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 890796292025788088}
   - component: {fileID: 3512839033584641797}
   - component: {fileID: 2601898033333773937}
+  - component: {fileID: 7690988695923511869}
   m_Layer: 9
   m_Name: Ball
   m_TagString: Ball
@@ -156,9 +157,23 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 868873157975436606}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cce39c9ca3de84932be798a3478bec86, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   destoryPrefab: {fileID: 457348741412623103, guid: b944d63384bfe4d6e969b6d766590169, type: 3}
+--- !u!114 &7690988695923511869
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 868873157975436606}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6628dc0ffa304a6897c13d400b6da24, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  luaScript: {fileID: 0}
+  luaScriptPath: Game/Ball/BallController.lua
