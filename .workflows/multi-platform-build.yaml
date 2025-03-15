@@ -1,12 +1,11 @@
-name: 多平台发布构建
-# 团结云开发多平台构建工作流
+name: Windows构建
+# 仅构建Windows版本
 
-# 在任何提交时触发云构建任务
+# 在提交至代码库时触发云构建任务
 on: [push]
 
 jobs:
-  # Windows平台构建任务
-  build-windows:
+  build:
     name: 构建Windows版本
     # 使用团结云开发指定的运行环境
     runs-on: windows-server-2022-tuanjie-1.2.0-pc-8c-16g
@@ -16,230 +15,26 @@ jobs:
         uses: actions/checkout-plasticscm@v1
         with:
           path: tjcloudbuild
-          silent: false  # 显示详细签出过程
 
       # 检查签出内容
       - name: 检查仓库内容
-        run: |
-          echo "项目目录内容："
-          dir ./tjcloudbuild
-          echo "检查关键目录:"
-          if exist tjcloudbuild\Assets (
-            echo "Assets目录存在"
-          ) else (
-            echo "警告: Assets目录不存在!"
-          )
-          if exist tjcloudbuild\ProjectSettings (
-            echo "ProjectSettings目录存在"
-          ) else (
-            echo "警告: ProjectSettings目录不存在!"
-          )
+        run: dir ./tjcloudbuild
 
-      # 使用 Library 目录缓存加速构建
-      - name: 缓存Library文件夹
-        id: cache-library
-        continue-on-error: true
-        uses: actions/tj-cache@v1
-        with:
-          path: ./tjcloudbuild/Library
-          key: Library-Windows-${{ github.sha }}
-          restore-keys: |
-            Library-Windows-
-
-      # 构建Windows版本
-      - name: 构建Windows版本
-        id: build-windows
+      # 构建 
+      - name: 构建项目
         uses: actions/tj-builder@v3
+        id: build-action
         with:
           targetPlatform: StandaloneWindows64
           projectPath: ./tjcloudbuild
-          buildName: FlappyBird-Windows
-          customParameters: "-development -logFile ./detailed_build.log -verbose"
 
-      # 检查构建结果
+      # 检查构建结果是否成功生成
       - name: 检查构建结果
-        if: always()
-        run: |
-          echo "构建结果路径："
-          if exist "${{ steps.build-windows.outputs.buildsPath }}" (
-            dir "${{ steps.build-windows.outputs.buildsPath }}"
-          ) else (
-            echo "警告: 构建输出目录不存在!"
-          )
-          
-          echo "检查构建日志："
-          if exist detailed_build.log (
-            echo "日志文件存在，显示最后50行..."
-            powershell -command "if(Test-Path detailed_build.log) { Get-Content -Path detailed_build.log -Tail 50 }"
-          ) else (
-            echo "警告: 构建日志文件不存在"
-          )
+        run: dir ${{ steps.build-action.outputs.buildsPath }}
 
-      # 收集诊断信息
-      - name: 收集诊断信息
-        if: always()
-        run: |
-          echo "收集诊断信息..."
-          mkdir diagnostics
-          
-          if exist detailed_build.log (
-            copy detailed_build.log diagnostics\
-          )
-          
-          if exist tjcloudbuild\Logs (
-            xcopy /E /I tjcloudbuild\Logs diagnostics\Unity_Logs
-          )
-          
-          if exist "%LOCALAPPDATA%\Unity\Editor\Editor.log" (
-            copy "%LOCALAPPDATA%\Unity\Editor\Editor.log" diagnostics\
-          )
-
-      # 上传构建产物
-      - name: 上传Windows版本
-        if: always()
+      # 上传制品
+      - name: 上传构建产物
         uses: actions/tj-upload-artifact@v2
         with:
-          name: Build-Windows-${{ steps.build-windows.outputs.buildVersion }}
-          path: |
-            ${{ steps.build-windows.outputs.buildsPath }}
-            ./diagnostics/
-          retention-days: 30
-          if-no-files-found: warn
-
-  # Android平台构建任务
-  build-android:
-    name: 构建Android版本
-    runs-on: windows-server-2022-tuanjie-1.2.0-mobile-8c-16g
-    steps:
-      # 从团结云开发的 PlasticSCM 仓库签出项目内容
-      - name: 检出项目代码
-        uses: actions/checkout-plasticscm@v1
-        with:
-          path: tjcloudbuild
-          silent: false
-
-      # 检查签出内容
-      - name: 检查仓库内容
-        run: |
-          echo "项目目录内容："
-          dir ./tjcloudbuild
-
-      # 使用 Library 目录缓存加速构建
-      - name: 缓存Library文件夹
-        id: cache-library
-        continue-on-error: true
-        uses: actions/tj-cache@v1
-        with:
-          path: ./tjcloudbuild/Library
-          key: Library-Android-${{ github.sha }}
-          restore-keys: |
-            Library-Android-
-
-      # 构建Android版本
-      - name: 构建Android版本
-        id: build-android
-        uses: actions/tj-builder@v3
-        with:
-          targetPlatform: Android
-          projectPath: ./tjcloudbuild
-          buildName: FlappyBird-Android
-          customParameters: "-development -logFile ./android_build.log -verbose"
-          versioning: Default
-
-      # 检查构建结果
-      - name: 检查构建结果
-        if: always()
-        run: |
-          echo "构建结果路径："
-          if exist "${{ steps.build-android.outputs.buildsPath }}" (
-            dir "${{ steps.build-android.outputs.buildsPath }}"
-          ) else (
-            echo "警告: 构建输出目录不存在!"
-          )
-          
-          echo "检查构建日志："
-          if exist android_build.log (
-            echo "日志文件存在，显示最后50行..."
-            powershell -command "if(Test-Path android_build.log) { Get-Content -Path android_build.log -Tail 50 }"
-          ) else (
-            echo "警告: 构建日志文件不存在"
-          )
-
-      # 收集诊断信息
-      - name: 收集诊断信息
-        if: always()
-        run: |
-          echo "收集诊断信息..."
-          mkdir android_diagnostics
-          
-          if exist android_build.log (
-            copy android_build.log android_diagnostics\
-          )
-          
-          if exist tjcloudbuild\Logs (
-            xcopy /E /I tjcloudbuild\Logs android_diagnostics\Unity_Logs
-          )
-          
-          if exist "%LOCALAPPDATA%\Unity\Editor\Editor.log" (
-            copy "%LOCALAPPDATA%\Unity\Editor\Editor.log" android_diagnostics\
-          )
-
-      # 上传构建产物
-      - name: 上传Android版本
-        if: always()
-        uses: actions/tj-upload-artifact@v2
-        with:
-          name: Build-Android-${{ steps.build-android.outputs.buildVersion }}
-          path: |
-            ${{ steps.build-android.outputs.buildsPath }}
-            ./android_diagnostics/
-          retention-days: 30
-          if-no-files-found: warn
-
-  # # MacOS平台构建任务
-  # build-macos:
-  #   name: 构建MacOS版本
-  #   # 确保使用Mac构建环境 - 根据团结云开发支持的环境选择
-  #   runs-on: macos-12-tuanjie-1.2.0-pc-8c-16g
-  #   steps:
-  #     # 从团结云开发的 PlasticSCM 仓库签出项目内容
-  #     - name: 检出项目代码
-  #       uses: actions/checkout-plasticscm@v1
-  #       with:
-  #         path: tjcloudbuild
-  #         silent: true
-
-  #     # 使用 Library 目录缓存加速构建
-  #     - name: 缓存Library文件夹
-  #       uses: actions/tj-cache@v1
-  #       with:
-  #         path: ./tjcloudbuild/Library
-  #         key: Library-MacOS-${{ github.sha }}
-  #         restore-keys: |
-  #           Library-MacOS-
-
-  #     # 确保Lua脚本正确设置
-  #     - name: 准备Lua脚本目录
-  #       run: |
-  #         mkdir -p ./tjcloudbuild/StreamingAssets/Lua/Game/Ball
-  #         cp ./tjcloudbuild/Assets/Lua/Game/Ball/BallController.lua ./tjcloudbuild/StreamingAssets/Lua/Game/Ball/
-
-  #     # 构建MacOS版本
-  #     - name: 构建MacOS版本
-  #       uses: actions/tj-builder@v3
-  #       id: build-macos
-  #       with:
-  #         targetPlatform: StandaloneOSX
-  #         projectPath: ./tjcloudbuild
-  #         buildName: FlappyBird-MacOS
-  #         customParameters: "-development"
-  #         versioning: Default
-
-  #     # 上传构建产物
-  #     - name: 上传MacOS版本
-  #       uses: actions/tj-upload-artifact@v2
-  #       with:
-  #         name: FlappyBird-MacOS-${{ steps.build-macos.outputs.buildVersion }}
-  #         path: ${{ steps.build-macos.outputs.buildsPath }}
-  #         retention-days: 30
-  #         if-no-files-found: error
+          name: Build-${{ steps.build-action.outputs.buildVersion }}
+          path: ${{ steps.build-action.outputs.buildsPath }}
