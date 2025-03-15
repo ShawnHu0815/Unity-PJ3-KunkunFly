@@ -68,59 +68,8 @@ jobs:
           dir /a tjcloudbuild
           echo "Assets目录内容:"
           dir /a tjcloudbuild\Assets
-          echo "Lua脚本目录检查:"
-          if exist tjcloudbuild\Assets\Lua (
-            echo "Lua目录存在"
-            dir /s /b tjcloudbuild\Assets\Lua\*.lua
-          ) else (
-            echo "警告: Lua目录不存在!"
-          )
 
-      # 确保Lua脚本正确设置，添加更多的错误处理和日志
-      - name: 准备Lua脚本目录
-        if: steps.checkout.outcome == 'success'
-        id: prepare_lua
-        shell: cmd
-        run: |
-          echo "==== 开始准备Lua脚本 ===="
-          echo "创建StreamingAssets/Lua目录结构..."
-          if not exist tjcloudbuild\StreamingAssets (
-            echo "创建StreamingAssets目录"
-            mkdir tjcloudbuild\StreamingAssets
-          )
-          if not exist tjcloudbuild\StreamingAssets\Lua (
-            echo "创建StreamingAssets\Lua目录"
-            mkdir tjcloudbuild\StreamingAssets\Lua
-          )
-          if not exist tjcloudbuild\StreamingAssets\Lua\Game (
-            echo "创建StreamingAssets\Lua\Game目录"
-            mkdir tjcloudbuild\StreamingAssets\Lua\Game
-          )
-          if not exist tjcloudbuild\StreamingAssets\Lua\Game\Ball (
-            echo "创建StreamingAssets\Lua\Game\Ball目录"
-            mkdir tjcloudbuild\StreamingAssets\Lua\Game\Ball
-          )
-          
-          echo "检查源Lua文件是否存在..."
-          if exist tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua (
-            echo "Lua源文件存在，复制到StreamingAssets..."
-            copy tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua tjcloudbuild\StreamingAssets\Lua\Game\Ball\
-            echo "复制完成，检查目标文件..."
-            dir tjcloudbuild\StreamingAssets\Lua\Game\Ball\
-            echo "Lua脚本准备成功"
-          ) else (
-            echo "错误: Lua源文件不存在!"
-            echo "搜索所有Lua文件位置:"
-            dir /s /b tjcloudbuild\*.lua
-            echo "尝试创建空的Lua文件以避免构建失败..."
-            if not exist tjcloudbuild\Assets\Lua\Game\Ball (
-              mkdir tjcloudbuild\Assets\Lua\Game\Ball
-            )
-            echo -- 临时创建的空文件 > tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua
-            echo -- 临时创建的空文件 > tjcloudbuild\StreamingAssets\Lua\Game\Ball\BallController.lua
-            echo "警告: 使用了空的Lua文件!"
-          )
-
+     
       # 使用 Library 目录缓存加速构建，添加更多的错误处理
       - name: 缓存Library文件夹
         id: cache-library
@@ -295,35 +244,6 @@ jobs:
           if exist tjcloudbuild (echo "存在") else (echo "不存在")
           echo "项目根目录内容:"
           dir /a tjcloudbuild
-
-      # 确保Lua脚本正确设置，添加更多的错误处理和日志
-      - name: 准备Lua脚本目录
-        if: steps.checkout.outcome == 'success'
-        id: prepare_lua
-        shell: cmd
-        run: |
-          echo "==== 开始准备Lua脚本 ===="
-          if not exist tjcloudbuild\StreamingAssets (
-            mkdir tjcloudbuild\StreamingAssets
-          )
-          if not exist tjcloudbuild\StreamingAssets\Lua\Game\Ball (
-            mkdir tjcloudbuild\StreamingAssets\Lua\Game\Ball
-          )
-          
-          if exist tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua (
-            copy tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua tjcloudbuild\StreamingAssets\Lua\Game\Ball\
-            echo "Lua脚本复制成功"
-          ) else (
-            echo "错误: Lua源文件不存在!"
-            echo "搜索所有Lua文件位置:"
-            dir /s /b tjcloudbuild\*.lua
-            echo "尝试创建空的Lua文件以避免构建失败..."
-            if not exist tjcloudbuild\Assets\Lua\Game\Ball (
-              mkdir tjcloudbuild\Assets\Lua\Game\Ball
-            )
-            echo -- 临时创建的空文件 > tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua
-            echo -- 临时创建的空文件 > tjcloudbuild\StreamingAssets\Lua\Game\Ball\BallController.lua
-          )
 
       # 使用 Library 目录缓存加速构建
       - name: 缓存Library文件夹
