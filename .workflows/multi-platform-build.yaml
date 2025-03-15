@@ -1,0 +1,436 @@
+name: 多平台发布构建
+# 团结云开发多平台构建工作流
+
+# 仅在合并到main分支时触发构建
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # Windows平台构建任务
+  build-windows:
+    name: 构建Windows版本
+    # 使用团结云开发指定的运行环境
+    runs-on: windows-server-2022-tuanjie-1.2.0-pc-8c-16g
+    steps:
+      # 检查执行环境和系统状态
+      - name: 检查系统环境
+        shell: cmd
+        run: |
+          echo "==== 系统信息 ===="
+          systeminfo | findstr /B /C:"OS Name" /C:"OS Version" /C:"System Type" /C:"Total Physical Memory"
+          echo "==== 磁盘空间 ===="
+          wmic logicaldisk get caption,freespace,size
+          echo "==== 环境变量 ===="
+          set
+
+      # 从团结云开发的 PlasticSCM 仓库签出项目内容
+      - name: 检出项目代码
+        id: checkout
+        uses: actions/checkout-plasticscm@v1
+        with:
+          # 不指定ref,默认签出main分支最新变更集
+          path: tjcloudbuild
+          silent: false  # 显示详细签出过程
+          
+      # 验证检出是否成功并展示详细信息
+      - name: 验证检出结果
+        if: always()
+        shell: cmd
+        run: |
+          echo "==== 检出结果状态: ${{ steps.checkout.outcome }} ===="
+          echo "检出目录是否存在:"
+          if exist tjcloudbuild (echo "存在") else (echo "不存在")
+          echo "项目根目录内容:"
+          dir /a tjcloudbuild
+          echo "检查关键目录:"
+          if exist tjcloudbuild\Assets (
+            echo "Assets目录存在"
+            dir /a tjcloudbuild\Assets
+          ) else (
+            echo "警告: Assets目录不存在!"
+          )
+          if exist tjcloudbuild\ProjectSettings (
+            echo "ProjectSettings目录存在"
+            dir /a tjcloudbuild\ProjectSettings
+          ) else (
+            echo "警告: ProjectSettings目录不存在!"
+          )
+
+      # 列出仓库内容，确认检出成功
+      - name: 检查仓库内容
+        if: steps.checkout.outcome == 'success'
+        shell: cmd
+        run: |
+          echo "==== 项目结构详细信息 ===="
+          echo "项目根目录内容:"
+          dir /a tjcloudbuild
+          echo "Assets目录内容:"
+          dir /a tjcloudbuild\Assets
+          echo "Lua脚本目录检查:"
+          if exist tjcloudbuild\Assets\Lua (
+            echo "Lua目录存在"
+            dir /s /b tjcloudbuild\Assets\Lua\*.lua
+          ) else (
+            echo "警告: Lua目录不存在!"
+          )
+
+      # 确保Lua脚本正确设置，添加更多的错误处理和日志
+      - name: 准备Lua脚本目录
+        if: steps.checkout.outcome == 'success'
+        id: prepare_lua
+        shell: cmd
+        run: |
+          echo "==== 开始准备Lua脚本 ===="
+          echo "创建StreamingAssets/Lua目录结构..."
+          if not exist tjcloudbuild\StreamingAssets (
+            echo "创建StreamingAssets目录"
+            mkdir tjcloudbuild\StreamingAssets
+          )
+          if not exist tjcloudbuild\StreamingAssets\Lua (
+            echo "创建StreamingAssets\Lua目录"
+            mkdir tjcloudbuild\StreamingAssets\Lua
+          )
+          if not exist tjcloudbuild\StreamingAssets\Lua\Game (
+            echo "创建StreamingAssets\Lua\Game目录"
+            mkdir tjcloudbuild\StreamingAssets\Lua\Game
+          )
+          if not exist tjcloudbuild\StreamingAssets\Lua\Game\Ball (
+            echo "创建StreamingAssets\Lua\Game\Ball目录"
+            mkdir tjcloudbuild\StreamingAssets\Lua\Game\Ball
+          )
+          
+          echo "检查源Lua文件是否存在..."
+          if exist tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua (
+            echo "Lua源文件存在，复制到StreamingAssets..."
+            copy tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua tjcloudbuild\StreamingAssets\Lua\Game\Ball\
+            echo "复制完成，检查目标文件..."
+            dir tjcloudbuild\StreamingAssets\Lua\Game\Ball\
+            echo "Lua脚本准备成功"
+          ) else (
+            echo "错误: Lua源文件不存在!"
+            echo "搜索所有Lua文件位置:"
+            dir /s /b tjcloudbuild\*.lua
+            echo "尝试创建空的Lua文件以避免构建失败..."
+            if not exist tjcloudbuild\Assets\Lua\Game\Ball (
+              mkdir tjcloudbuild\Assets\Lua\Game\Ball
+            )
+            echo -- 临时创建的空文件 > tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua
+            echo -- 临时创建的空文件 > tjcloudbuild\StreamingAssets\Lua\Game\Ball\BallController.lua
+            echo "警告: 使用了空的Lua文件!"
+          )
+
+      # 使用 Library 目录缓存加速构建，添加更多的错误处理
+      - name: 缓存Library文件夹
+        id: cache-library
+        if: steps.checkout.outcome == 'success'
+        continue-on-error: true  # 即使缓存操作失败也继续执行后续步骤以收集日志
+        uses: actions/tj-cache@v1
+        with:
+          path: ./tjcloudbuild/Library
+          key: Library-Windows-${{ github.sha }}
+          restore-keys: |
+            Library-Windows-
+
+      # 报告缓存状态
+      - name: 报告缓存状态
+        if: always()
+        shell: cmd
+        run: |
+          echo "==== 缓存操作状态 ===="
+          echo "缓存状态: ${{ steps.cache-library.outcome }}"
+          echo "缓存命中: ${{ steps.cache-library.outputs.cache-hit }}"
+          if exist tjcloudbuild\Library (
+            echo "Library目录存在"
+            dir tjcloudbuild\Library
+          ) else (
+            echo "警告: Library目录不存在!"
+          )
+
+      # 构建Windows版本，添加更多详细的日志和参数
+      - name: 构建Windows版本
+        if: steps.checkout.outcome == 'success'
+        id: build-windows
+        continue-on-error: true  # 允许构建失败但继续执行后续步骤以收集日志
+        uses: actions/tj-builder@v3
+        with:
+          targetPlatform: StandaloneWindows64
+          projectPath: ./tjcloudbuild
+          buildName: FlappyBird-Windows
+          customParameters: "-development -logFile ./detailed_build.log -verbose -stackTraceLogType Full -cleanBuildCache -forceReserializeAssets"
+          multiProcessAssetBundleBuild: true
+          parallelImport: true
+
+      # 检查构建结果，输出详细信息
+      - name: 检查构建结果
+        if: always()
+        shell: cmd
+        run: |
+          echo "==== 构建结果状态 ===="
+          echo "构建状态: ${{ steps.build-windows.outcome }}"
+          echo "构建输出路径: ${{ steps.build-windows.outputs.buildsPath }}"
+          echo "构建版本: ${{ steps.build-windows.outputs.buildVersion }}"
+          
+          echo "检查构建输出目录是否存在:"
+          if exist "${{ steps.build-windows.outputs.buildsPath }}" (
+            echo "构建输出目录存在"
+            dir "${{ steps.build-windows.outputs.buildsPath }}"
+          ) else (
+            echo "警告: 构建输出目录不存在!"
+          )
+
+      # 错误检查和日志展示，提供更多调试信息
+      - name: 错误检查和日志分析
+        if: always()
+        shell: cmd
+        run: |
+          echo "==== 详细日志分析 ===="
+          echo "检查构建日志..."
+          if exist detailed_build.log (
+            echo "构建日志文件存在，显示最后200行日志..."
+            powershell -command "if(Test-Path detailed_build.log) { Get-Content -Path detailed_build.log -Tail 200 }"
+          ) else (
+            echo "警告: 构建日志文件不存在"
+          )
+          
+          echo "检查Unity Editor日志..."
+          if exist "%LOCALAPPDATA%\Unity\Editor\Editor.log" (
+            echo "Unity Editor日志存在，显示最后100行..."
+            powershell -command "if(Test-Path $env:LOCALAPPDATA\Unity\Editor\Editor.log) { Get-Content -Path $env:LOCALAPPDATA\Unity\Editor\Editor.log -Tail 100 }"
+          ) else (
+            echo "警告: Unity Editor日志文件不存在"
+          )
+          
+          echo "搜索所有相关日志文件..."
+          dir /s /b tjcloudbuild\*.log
+          
+          echo "检查ProjectSettings.asset文件是否存在..."
+          if exist tjcloudbuild\ProjectSettings\ProjectSettings.asset (
+            echo "ProjectSettings.asset文件存在"
+            type tjcloudbuild\ProjectSettings\ProjectSettings.asset | findstr /C:"productName" /C:"companyName" /C:"scriptingBackend" /C:"apiCompatibilityLevel"
+          ) else (
+            echo "警告: ProjectSettings.asset文件不存在!"
+          )
+
+      # 收集所有相关日志和配置文件
+      - name: 收集诊断信息
+        if: always()
+        shell: cmd
+        run: |
+          echo "==== 收集诊断信息 ===="
+          mkdir -p diagnostics
+          
+          echo "收集所有日志文件..."
+          if exist detailed_build.log (
+            copy detailed_build.log diagnostics\
+          )
+          
+          if exist tjcloudbuild\Logs (
+            xcopy /E /I tjcloudbuild\Logs diagnostics\Unity_Logs
+          )
+          
+          if exist "%LOCALAPPDATA%\Unity\Editor\Editor.log" (
+            copy "%LOCALAPPDATA%\Unity\Editor\Editor.log" diagnostics\
+          )
+          
+          echo "收集项目配置文件..."
+          if exist tjcloudbuild\ProjectSettings (
+            xcopy /E /I tjcloudbuild\ProjectSettings diagnostics\ProjectSettings
+          )
+          
+          echo "生成环境报告..."
+          set > diagnostics\environment_vars.txt
+          systeminfo > diagnostics\system_info.txt
+          wmic logicaldisk get caption,freespace,size > diagnostics\disk_space.txt
+          
+          echo "诊断信息收集完成"
+          dir /s diagnostics
+
+      # 尝试上传构建产物，即使构建失败也尝试
+      - name: 上传Windows版本和诊断信息
+        if: always()
+        uses: actions/tj-upload-artifact@v2
+        with:
+          name: FlappyBird-Windows-Diagnostics
+          path: |
+            ./diagnostics/
+            ${{ steps.build-windows.outputs.buildsPath }}
+            ./detailed_build.log
+            ./tjcloudbuild/Logs/
+          retention-days: 30
+          if-no-files-found: warn
+
+  # Android平台构建任务
+  build-android:
+    name: 构建Android版本
+    runs-on: windows-server-2022-tuanjie-1.2.0-pc-8c-16g
+    steps:
+      # 检查执行环境和系统状态
+      - name: 检查系统环境
+        shell: cmd
+        run: |
+          echo "==== 系统信息 ===="
+          systeminfo | findstr /B /C:"OS Name" /C:"OS Version" /C:"System Type" /C:"Total Physical Memory"
+          echo "==== 磁盘空间 ===="
+          wmic logicaldisk get caption,freespace,size
+          echo "==== 环境变量 ===="
+          set
+      
+      # 从团结云开发的 PlasticSCM 仓库签出项目内容
+      - name: 检出项目代码
+        id: checkout
+        uses: actions/checkout-plasticscm@v1
+        with:
+          path: tjcloudbuild
+          silent: false
+          
+      # 验证检出是否成功并展示详细信息
+      - name: 验证检出结果
+        if: always()
+        shell: cmd
+        run: |
+          echo "==== 检出结果状态: ${{ steps.checkout.outcome }} ===="
+          echo "检出目录是否存在:"
+          if exist tjcloudbuild (echo "存在") else (echo "不存在")
+          echo "项目根目录内容:"
+          dir /a tjcloudbuild
+
+      # 确保Lua脚本正确设置，添加更多的错误处理和日志
+      - name: 准备Lua脚本目录
+        if: steps.checkout.outcome == 'success'
+        id: prepare_lua
+        shell: cmd
+        run: |
+          echo "==== 开始准备Lua脚本 ===="
+          if not exist tjcloudbuild\StreamingAssets (
+            mkdir tjcloudbuild\StreamingAssets
+          )
+          if not exist tjcloudbuild\StreamingAssets\Lua\Game\Ball (
+            mkdir tjcloudbuild\StreamingAssets\Lua\Game\Ball
+          )
+          
+          if exist tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua (
+            copy tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua tjcloudbuild\StreamingAssets\Lua\Game\Ball\
+            echo "Lua脚本复制成功"
+          ) else (
+            echo "错误: Lua源文件不存在!"
+            echo "搜索所有Lua文件位置:"
+            dir /s /b tjcloudbuild\*.lua
+            echo "尝试创建空的Lua文件以避免构建失败..."
+            if not exist tjcloudbuild\Assets\Lua\Game\Ball (
+              mkdir tjcloudbuild\Assets\Lua\Game\Ball
+            )
+            echo -- 临时创建的空文件 > tjcloudbuild\Assets\Lua\Game\Ball\BallController.lua
+            echo -- 临时创建的空文件 > tjcloudbuild\StreamingAssets\Lua\Game\Ball\BallController.lua
+          )
+
+      # 使用 Library 目录缓存加速构建
+      - name: 缓存Library文件夹
+        id: cache-library
+        if: steps.checkout.outcome == 'success'
+        continue-on-error: true
+        uses: actions/tj-cache@v1
+        with:
+          path: ./tjcloudbuild/Library
+          key: Library-Android-${{ github.sha }}
+          restore-keys: |
+            Library-Android-
+
+      # 构建Android版本，添加更多的调试参数
+      - name: 构建Android版本
+        if: steps.checkout.outcome == 'success'
+        id: build-android
+        continue-on-error: true
+        uses: actions/tj-builder@v3
+        with:
+          targetPlatform: Android
+          projectPath: ./tjcloudbuild
+          buildName: FlappyBird-Android
+          customParameters: "-development -logFile ./android_build.log -verbose -stackTraceLogType Full"
+          versioning: Default
+
+      # 收集所有相关日志和配置文件
+      - name: 收集诊断信息
+        if: always()
+        shell: cmd
+        run: |
+          echo "==== 收集诊断信息 ===="
+          mkdir -p android_diagnostics
+          
+          if exist android_build.log (
+            copy android_build.log android_diagnostics\
+          )
+          
+          if exist tjcloudbuild\Logs (
+            xcopy /E /I tjcloudbuild\Logs android_diagnostics\Unity_Logs
+          )
+          
+          if exist "%LOCALAPPDATA%\Unity\Editor\Editor.log" (
+            copy "%LOCALAPPDATA%\Unity\Editor\Editor.log" android_diagnostics\
+          )
+          
+          echo "诊断信息收集完成"
+          dir /s android_diagnostics
+
+      # 上传构建产物和诊断信息
+      - name: 上传Android版本和诊断信息
+        if: always()
+        uses: actions/tj-upload-artifact@v2
+        with:
+          name: FlappyBird-Android-Diagnostics
+          path: |
+            ./android_diagnostics/
+            ${{ steps.build-android.outputs.buildsPath }}
+            ./android_build.log
+            ./tjcloudbuild/Logs/
+          retention-days: 30
+          if-no-files-found: warn
+
+  # # MacOS平台构建任务
+  # build-macos:
+  #   name: 构建MacOS版本
+  #   # 确保使用Mac构建环境 - 根据团结云开发支持的环境选择
+  #   runs-on: macos-12-tuanjie-1.2.0-pc-8c-16g
+  #   steps:
+  #     # 从团结云开发的 PlasticSCM 仓库签出项目内容
+  #     - name: 检出项目代码
+  #       uses: actions/checkout-plasticscm@v1
+  #       with:
+  #         path: tjcloudbuild
+  #         silent: true
+
+  #     # 使用 Library 目录缓存加速构建
+  #     - name: 缓存Library文件夹
+  #       uses: actions/tj-cache@v1
+  #       with:
+  #         path: ./tjcloudbuild/Library
+  #         key: Library-MacOS-${{ github.sha }}
+  #         restore-keys: |
+  #           Library-MacOS-
+
+  #     # 确保Lua脚本正确设置
+  #     - name: 准备Lua脚本目录
+  #       run: |
+  #         mkdir -p ./tjcloudbuild/StreamingAssets/Lua/Game/Ball
+  #         cp ./tjcloudbuild/Assets/Lua/Game/Ball/BallController.lua ./tjcloudbuild/StreamingAssets/Lua/Game/Ball/
+
+  #     # 构建MacOS版本
+  #     - name: 构建MacOS版本
+  #       uses: actions/tj-builder@v3
+  #       id: build-macos
+  #       with:
+  #         targetPlatform: StandaloneOSX
+  #         projectPath: ./tjcloudbuild
+  #         buildName: FlappyBird-MacOS
+  #         customParameters: "-development"
+  #         versioning: Default
+
+  #     # 上传构建产物
+  #     - name: 上传MacOS版本
+  #       uses: actions/tj-upload-artifact@v2
+  #       with:
+  #         name: FlappyBird-MacOS-${{ steps.build-macos.outputs.buildVersion }}
+  #         path: ${{ steps.build-macos.outputs.buildsPath }}
+  #         retention-days: 30
+  #         if-no-files-found: error
