@@ -4,7 +4,7 @@
 </div>
 
 <div style="text-align: center;">
-<img src="./docs/images/游戏演示.gif" width="300" align="center"/>
+<img src="./docs/images/游戏演示.gif" width="250" align="center"/>
 </div>
 
 ## 🌟 项目介绍  
