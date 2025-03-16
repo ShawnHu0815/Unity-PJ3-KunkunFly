@@ -1,10 +1,10 @@
-<div style="text-align: center;">
-<h1>🐔 坤坤勇敢飞 Kunkunfly<img src="Assets/Resources/Icons/Icon144px.png" width="40" height="40" align="center"/> </h1>
-<h3>律师函警告のUnity大作</h3>
+<div align="center">
+  <h1>🐔 坤坤勇敢飞 Kunkunfly<img src="Assets/Resources/Icons/Icon144px.png" width="40" height="40" align="center"/> </h1>
+  <h3>律师函警告のUnity大作</h3>
 </div>
 
-<div style="text-align: center;">
-<img src="./docs/images/游戏演示.gif" width="250" align="center"/>
+<div align="center">
+  <img src="./docs/images/游戏演示.gif" width="250"/>
 </div>
 
 ## 🌟 项目介绍  
