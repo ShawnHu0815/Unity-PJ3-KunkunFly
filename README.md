@@ -48,9 +48,9 @@
 
 ## 📥 安装与运行
 ### [下载地址](https://github.com/ShawnHu0815/Unity-PJ3-KunkunFly/releases) & 平台支持    
-- **Windows**: 执行`KunkunFly_Windows.exe`  
-- **macOS**: 运行`KunkunFly_macOS.app`  
-- **Android**: 安装`KunkunFly_Android.apk`  
+- **Windows**: 执行`KunkunFly-Windows.exe`  
+- **macOS**: 运行`KunkunFly-MacOS.app`  
+- **Android**: 安装`KunkunFly-Android.apk`  
 
 ---
 
