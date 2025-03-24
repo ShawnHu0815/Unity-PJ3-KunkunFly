@@ -2,44 +2,55 @@ using QFramework;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ObjectPoolUtility : IObjectPoolUtility
+namespace QFramework
 {
-    private Dictionary<string, Queue<GameObject>> _pools = new Dictionary<string, Queue<GameObject>>();
-    
-    public GameObject GetObject(GameObject prefab)
+    // 接口定义
+    public interface IObjectPoolUtility : IUtility
     {
-        string key = prefab.name;
-        
-        if (!_pools.ContainsKey(key))
-        {
-            _pools[key] = new Queue<GameObject>();
-        }
-        
-        GameObject obj;
-        if (_pools[key].Count > 0)
-        {
-            obj = _pools[key].Dequeue();
-            obj.SetActive(true);
-        }
-        else
-        {
-            obj = GameObject.Instantiate(prefab);
-            obj.name = key;
-        }
-        
-        return obj;
+        GameObject GetObject(GameObject prefab);
+        void RecycleObject(GameObject obj);
     }
     
-    public void RecycleObject(GameObject obj)
+    // 实现类
+    public class ObjectPoolUtility : IObjectPoolUtility
     {
-        string key = obj.name;
+        private Dictionary<string, Queue<GameObject>> _pools = new Dictionary<string, Queue<GameObject>>();
         
-        if (!_pools.ContainsKey(key))
+        public GameObject GetObject(GameObject prefab)
         {
-            _pools[key] = new Queue<GameObject>();
+            string key = prefab.name;
+            
+            if (!_pools.ContainsKey(key))
+            {
+                _pools[key] = new Queue<GameObject>();
+            }
+            
+            GameObject obj;
+            if (_pools[key].Count > 0)
+            {
+                obj = _pools[key].Dequeue();
+                obj.SetActive(true);
+            }
+            else
+            {
+                obj = GameObject.Instantiate(prefab);
+                obj.name = key;
+            }
+            
+            return obj;
         }
         
-        obj.SetActive(false);
-        _pools[key].Enqueue(obj);
+        public void RecycleObject(GameObject obj)
+        {
+            string key = obj.name;
+            
+            if (!_pools.ContainsKey(key))
+            {
+                _pools[key] = new Queue<GameObject>();
+            }
+            
+            obj.SetActive(false);
+            _pools[key].Enqueue(obj);
+        }
     }
 }

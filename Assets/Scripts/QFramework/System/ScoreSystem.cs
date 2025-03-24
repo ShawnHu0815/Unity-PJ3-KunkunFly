@@ -1,41 +1,53 @@
 using QFramework;
 
-public class ScoreSystem : AbstractSystem, IScoreSystem
+namespace QFramework
 {
-    private IGameModel _gameModel;
-    
-    protected override void OnInit()
+    // 接口定义
+    public interface IScoreSystem : ISystem
     {
-        _gameModel = this.GetModel<IGameModel>();
+        void AddScore();
+        bool CheckHighScore();
+        void ResetScore();
     }
     
-    public void AddScore()
+    // 实现类
+    public class ScoreSystem : AbstractSystem, IScoreSystem
     {
-        if (_gameModel.IsGameStart.Value)
+        private IGameModel _gameModel;
+        
+        protected override void OnInit()
         {
-            _gameModel.CurrentScore.Value++;
+            _gameModel = this.GetModel<IGameModel>();
+        }
+        
+        public void AddScore()
+        {
+            if (_gameModel.IsGameStart.Value)
+            {
+                _gameModel.CurrentScore.Value++;
+                
+                // 播放得分音效
+                this.GetSystem<IAudioSystem>().PlaySound("score");
+            }
+        }
+        
+        public bool CheckHighScore()
+        {
+            int currentScore = _gameModel.CurrentScore.Value;
+            int bestScore = _gameModel.BestScore.Value;
             
-            // 播放得分音效
-            this.GetSystem<IAudioSystem>().PlaySound("score");
+            if (currentScore > bestScore)
+            {
+                _gameModel.BestScore.Value = currentScore;
+                return true;
+            }
+            
+            return false;
         }
-    }
-    
-    public bool CheckHighScore()
-    {
-        int currentScore = _gameModel.CurrentScore.Value;
-        int bestScore = _gameModel.BestScore.Value;
         
-        if (currentScore > bestScore)
+        public void ResetScore()
         {
-            _gameModel.BestScore.Value = currentScore;
-            return true;
+            _gameModel.CurrentScore.Value = 0;
         }
-        
-        return false;
-    }
-    
-    public void ResetScore()
-    {
-        _gameModel.CurrentScore.Value = 0;
     }
 }

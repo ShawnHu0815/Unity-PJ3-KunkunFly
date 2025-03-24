@@ -1,56 +1,66 @@
-// Assets/Scripts/QFramework/System/BackgroundSystem.cs
 using QFramework;
 using UnityEngine;
 
-public class BackgroundSystem : AbstractSystem, IBackgroundSystem
+namespace QFramework
 {
-    private GameObject _backgroundsObj;
-    private GameObject _landsObj;
-    
-    protected override void OnInit()
+    // 接口定义
+    public interface IBackgroundSystem : ISystem
     {
-        _backgroundsObj = GameObject.Find("Backgrounds");
-        _landsObj = GameObject.Find("Lands");
+        void StartMoving();
+        void StopMoving();
     }
     
-    public void StartMoving()
+    // 实现类
+    public class BackgroundSystem : AbstractSystem, IBackgroundSystem
     {
-        if (_backgroundsObj != null)
+        private GameObject _backgroundsObj;
+        private GameObject _landsObj;
+        
+        protected override void OnInit()
         {
-            var controller = _backgroundsObj.GetComponent<BackgroundController>();
-            if (controller != null)
+            _backgroundsObj = GameObject.Find("Backgrounds");
+            _landsObj = GameObject.Find("Lands");
+        }
+        
+        public void StartMoving()
+        {
+            if (_backgroundsObj != null)
             {
-                controller.isMove = true;
+                var controller = _backgroundsObj.GetComponent<BackgroundController>();
+                if (controller != null)
+                {
+                    controller.isMove = true;
+                }
+            }
+            
+            if (_landsObj != null)
+            {
+                var controller = _landsObj.GetComponent<BackgroundController>();
+                if (controller != null)
+                {
+                    controller.isMove = true;
+                }
             }
         }
         
-        if (_landsObj != null)
+        public void StopMoving()
         {
-            var controller = _landsObj.GetComponent<BackgroundController>();
-            if (controller != null)
+            if (_backgroundsObj != null)
             {
-                controller.isMove = true;
+                var controller = _backgroundsObj.GetComponent<BackgroundController>();
+                if (controller != null)
+                {
+                    controller.isMove = false;
+                }
             }
-        }
-    }
-    
-    public void StopMoving()
-    {
-        if (_backgroundsObj != null)
-        {
-            var controller = _backgroundsObj.GetComponent<BackgroundController>();
-            if (controller != null)
+            
+            if (_landsObj != null)
             {
-                controller.isMove = false;
-            }
-        }
-        
-        if (_landsObj != null)
-        {
-            var controller = _landsObj.GetComponent<BackgroundController>();
-            if (controller != null)
-            {
-                controller.isMove = false;
+                var controller = _landsObj.GetComponent<BackgroundController>();
+                if (controller != null)
+                {
+                    controller.isMove = false;
+                }
             }
         }
     }

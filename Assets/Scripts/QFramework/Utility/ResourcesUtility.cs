@@ -1,10 +1,20 @@
 using QFramework;
 using UnityEngine;
 
-public class ResourcesUtility : IResourcesUtility
+namespace QFramework
 {
-    public T Load<T>(string path) where T : UnityEngine.Object
+    // 接口定义
+    public interface IResourcesUtility : IUtility
     {
-        return Resources.Load<T>(path);
+        T Load<T>(string path) where T : UnityEngine.Object;
+    }
+    
+    // 实现类
+    public class ResourcesUtility : IResourcesUtility
+    {
+        public T Load<T>(string path) where T : UnityEngine.Object
+        {
+            return Resources.Load<T>(path);
+        }
     }
 }
