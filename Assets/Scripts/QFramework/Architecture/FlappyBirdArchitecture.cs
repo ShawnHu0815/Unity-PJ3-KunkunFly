@@ -8,6 +8,7 @@ public class FlappyBirdArchitecture : Architecture<FlappyBirdArchitecture>
     {
         // 注册Model
         RegisterModel<IGameModel>(new GameModel());
+        RegisterModel<ILoadingModel>(new LoadingModel());
         
         // 注册System
         RegisterSystem<ITubeSystem>(new TubeSystem());

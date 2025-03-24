@@ -2,6 +2,7 @@ using QFramework;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 
 namespace QFramework
 {
@@ -24,12 +25,13 @@ namespace QFramework
         private bool _isSpawning = false;
         private float _spawnInterval = 1.6f;
         
-        protected override void OnInit()
+        protected override async void OnInit()
         {
-            // 获取管道预制体
-            _tubePrefab = Resources.Load<GameObject>("Prefabs/GreenTube");
+            // 使用Addressables加载预制体
+            _tubePrefab = await this.GetUtility<IResourcesUtility>()
+                                 .LoadAssetAsync<GameObject>("Prefabs/GreenTube");
             
-            // 也可以通过查找场景中的对象获取
+            // 另一种获取方式保持不变
             var tubesController = GameObject.Find("Tubes");
             if (tubesController != null)
             {
