@@ -54,6 +54,8 @@ ExportedObj/
 
 # Unity3D generated meta files
 *.pidb.meta
+*.pdb.meta
+*.mdb.meta
 
 # Unity3D generated file on crash reports
 sysinfo.txt
@@ -62,6 +64,7 @@ sysinfo.txt
 *.apk
 *.aab
 *.unitypackage
+*.appimage
 
 # Crashlytics generated file
 crashlytics-build.properties
@@ -73,3 +76,20 @@ Packed/
 # Ignore JetBrains Rider project files
 .idea/
 *.sln.iml
+
+# Unity 构建输出目录
+成果打包/
+*.exe
+*.dll
+*.dylib
+*.so
+*.bundle
+*.app
+*.zip
+*.rar
+*.7z
+
+# Unity 临时文件
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
