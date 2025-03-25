@@ -46,8 +46,8 @@ namespace QFramework
                     actionOnGet: (obj) => OnGetObject(obj),
                     actionOnRelease: (obj) => OnReleaseObject(obj),
                     actionOnDestroy: (obj) => OnDestroyObject(obj),
-                    defaultCapacity: 10,
-                    maxSize: 100
+                    defaultCapacity: 5,
+                    maxSize: 15
                 );
             }
             
