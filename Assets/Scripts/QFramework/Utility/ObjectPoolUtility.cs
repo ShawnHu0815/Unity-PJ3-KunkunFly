@@ -1,6 +1,7 @@
 using QFramework;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Pool;
 
 namespace QFramework
 {
@@ -9,20 +10,19 @@ namespace QFramework
     {
         GameObject GetObject(GameObject prefab);
         void RecycleObject(GameObject obj);
-        void PreWarm(GameObject prefab, int count); // 预热对象池
-        void Clear(string prefabName = null); // 清空对象池
+        void PreWarm(GameObject prefab, int count);
+        void Clear(string prefabName = null);
     }
     
     // 实现类
     public class ObjectPoolUtility : IObjectPoolUtility
     {
-        private Dictionary<string, Queue<GameObject>> _pools = new Dictionary<string, Queue<GameObject>>();
-        private Dictionary<string, GameObject> _prefabMap = new Dictionary<string, GameObject>(); // 存储预制体引用
-        private Transform _poolRoot; // 对象池的根节点
+        private Dictionary<string, IObjectPool<GameObject>> _pools = new Dictionary<string, IObjectPool<GameObject>>();
+        private Dictionary<string, GameObject> _prefabMap = new Dictionary<string, GameObject>();
+        private Transform _poolRoot;
         
         public ObjectPoolUtility()
         {
-            // 创建对象池根节点
             GameObject poolRootObj = new GameObject("ObjectPool");
             Object.DontDestroyOnLoad(poolRootObj);
             _poolRoot = poolRootObj.transform;
@@ -38,27 +38,20 @@ namespace QFramework
                 _prefabMap[key] = prefab;
             }
             
+            // 获取或创建对象池
             if (!_pools.ContainsKey(key))
             {
-                _pools[key] = new Queue<GameObject>();
+                _pools[key] = new ObjectPool<GameObject>(
+                    createFunc: () => CreatePoolObject(prefab),
+                    actionOnGet: (obj) => OnGetObject(obj),
+                    actionOnRelease: (obj) => OnReleaseObject(obj),
+                    actionOnDestroy: (obj) => OnDestroyObject(obj),
+                    defaultCapacity: 10,
+                    maxSize: 100
+                );
             }
             
-            GameObject obj;
-            if (_pools[key].Count > 0)
-            {
-                obj = _pools[key].Dequeue();
-                obj.SetActive(true);
-                
-                // 尝试调用重置方法
-                ResetObject(obj);
-            }
-            else
-            {
-                obj = GameObject.Instantiate(prefab);
-                obj.name = key;
-            }
-            
-            return obj;
+            return _pools[key].Get();
         }
         
         public void RecycleObject(GameObject obj)
@@ -66,17 +59,10 @@ namespace QFramework
             if (obj == null) return;
             
             string key = obj.name;
-            
-            if (!_pools.ContainsKey(key))
+            if (_pools.ContainsKey(key))
             {
-                _pools[key] = new Queue<GameObject>();
+                _pools[key].Release(obj);
             }
-            
-            // 重置并禁用对象
-            obj.transform.SetParent(_poolRoot);
-            obj.SetActive(false);
-            
-            _pools[key].Enqueue(obj);
         }
         
         public void PreWarm(GameObject prefab, int count)
@@ -91,19 +77,31 @@ namespace QFramework
                 _prefabMap[key] = prefab;
             }
             
+            // 确保对象池存在
             if (!_pools.ContainsKey(key))
             {
-                _pools[key] = new Queue<GameObject>();
+                _pools[key] = new ObjectPool<GameObject>(
+                    createFunc: () => CreatePoolObject(prefab),
+                    actionOnGet: (obj) => OnGetObject(obj),
+                    actionOnRelease: (obj) => OnReleaseObject(obj),
+                    actionOnDestroy: (obj) => OnDestroyObject(obj),
+                    defaultCapacity: count,
+                    maxSize: count * 2
+                );
             }
             
-            // 预创建指定数量的对象
+            // 预热对象池
+            var pool = _pools[key];
+            var objects = new List<GameObject>();
+            
             for (int i = 0; i < count; i++)
             {
-                GameObject obj = GameObject.Instantiate(prefab);
-                obj.name = key;
-                obj.transform.SetParent(_poolRoot);
-                obj.SetActive(false);
-                _pools[key].Enqueue(obj);
+                objects.Add(pool.Get());
+            }
+            
+            foreach (var obj in objects)
+            {
+                pool.Release(obj);
             }
         }
         
@@ -112,16 +110,9 @@ namespace QFramework
             if (string.IsNullOrEmpty(prefabName))
             {
                 // 清空所有对象池
-                foreach (var queue in _pools.Values)
+                foreach (var pool in _pools.Values)
                 {
-                    while (queue.Count > 0)
-                    {
-                        GameObject obj = queue.Dequeue();
-                        if (obj != null)
-                        {
-                            GameObject.Destroy(obj);
-                        }
-                    }
+                    pool.Clear();
                 }
                 _pools.Clear();
                 _prefabMap.Clear();
@@ -129,28 +120,51 @@ namespace QFramework
             else if (_pools.ContainsKey(prefabName))
             {
                 // 清空指定对象池
-                var queue = _pools[prefabName];
-                while (queue.Count > 0)
-                {
-                    GameObject obj = queue.Dequeue();
-                    if (obj != null)
-                    {
-                        GameObject.Destroy(obj);
-                    }
-                }
+                _pools[prefabName].Clear();
                 _pools.Remove(prefabName);
                 _prefabMap.Remove(prefabName);
             }
         }
         
-        // 重置对象状态的私有方法
+        // 创建池对象
+        private GameObject CreatePoolObject(GameObject prefab)
+        {
+            var obj = GameObject.Instantiate(prefab);
+            obj.name = prefab.name;
+            obj.transform.SetParent(_poolRoot);
+            obj.SetActive(false);
+            return obj;
+        }
+        
+        // 从池中获取对象时的处理
+        private void OnGetObject(GameObject obj)
+        {
+            obj.SetActive(true);
+            ResetObject(obj);
+        }
+        
+        // 释放对象到池中时的处理
+        private void OnReleaseObject(GameObject obj)
+        {
+            obj.transform.SetParent(_poolRoot);
+            obj.SetActive(false);
+        }
+        
+        // 销毁对象时的处理
+        private void OnDestroyObject(GameObject obj)
+        {
+            if (obj != null)
+            {
+                GameObject.Destroy(obj);
+            }
+        }
+        
+        // 重置对象状态
         private void ResetObject(GameObject obj)
         {
-            // 尝试调用可能具有的重置方法
             var resetComponents = obj.GetComponents<MonoBehaviour>();
             foreach (var component in resetComponents)
             {
-                // 使用反射查找并调用Reset或ResetState方法
                 var resetMethod = component.GetType().GetMethod("ResetState");
                 if (resetMethod != null)
                 {
